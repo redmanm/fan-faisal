@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useState, useCallback } from 'react'
-import { X, Download, Printer, Sparkles, HeartHandshake, Utensils, Phone } from 'lucide-react'
+import { X, Download, Sparkles, HeartHandshake, Utensils, Phone } from 'lucide-react'
 
 type Props = {
   language: 'en' | 'ar'
@@ -244,10 +244,6 @@ export function CVPreview({
     }
   }
 
-  const handlePrint = () => {
-    window.print()
-  }
-
   // Fallback skills if empty
   const activeSkills = skills && skills.length > 0 ? skills : ['Cooking', 'Childcare']
 
@@ -265,15 +261,6 @@ export function CVPreview({
           <span>{t('Standard A4 Printable Format (100% Scale)', 'تنسيق صفحة A4 قياسي للطباعة (مقياس 100%)')}</span>
         </div>
         <div className="cv-actions-buttons">
-          <button
-            type="button"
-            className="cv-btn-secondary"
-            onClick={handlePrint}
-            title={t('Print Page', 'طباعة المستند')}
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>{t('Print', 'طباعة')}</span>
-          </button>
           <button
             type="button"
             className="cv-btn-primary"
