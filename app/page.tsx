@@ -361,6 +361,35 @@ export default function Page() {
     'User access': 'صلاحيات المستخدمين'
   }
 
+  const navSections = useMemo(() => {
+    const sections: {
+      key: string
+      labelEn: string
+      labelAr: string
+      items: string[]
+    }[] = [
+      {
+        key: 'overview',
+        labelEn: 'OVERVIEW',
+        labelAr: 'نظرة عامة',
+        items: ['Dashboard'].filter((item) => navItems.includes(item))
+      },
+      {
+        key: 'operations',
+        labelEn: 'OPERATIONS',
+        labelAr: 'العمليات والتشغيل',
+        items: ['Workers', 'Register by Passport', 'Sponsors', 'Inquiries'].filter((item) => navItems.includes(item))
+      },
+      {
+        key: 'system_admin',
+        labelEn: 'SYSTEM ADMIN',
+        labelAr: 'إدارة النظام',
+        items: ['Settings', 'User access'].filter((item) => navItems.includes(item))
+      }
+    ]
+    return sections.filter((s) => s.items.length > 0)
+  }, [navItems])
+
   // Worker form & detail state
   const [portrait, setPortrait] = useState('')
   const [passport, setPassport] = useState('')
@@ -833,10 +862,12 @@ export default function Page() {
       {/* Sidebar */}
       <aside className={`portal-sidebar ${mobileOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
-          <img src={logoUrl} alt="Fan AlFaisal Recruitment Company" />
+          <div className="sidebar-brand-logo-wrap">
+            <img src={logoUrl} alt="Fan AlFaisal Recruitment Company" />
+          </div>
           <div className="sidebar-brand-text">
             <strong>Fan Al Faisal</strong>
-            <span>{isArabic ? 'شركة فن الفيصل للاستقدام' : 'Recruitment Co.'}</span>
+            <span className="sidebar-brand-subtitle">{isArabic ? 'شركة فن الفيصل للاستقدام' : 'SMART CONTROL PANEL'}</span>
             <span className="musaned-badge">
               <BadgeCheck /> {tx('Musaned Certified', 'معتمد من مساند')}
             </span>
@@ -844,24 +875,39 @@ export default function Page() {
         </div>
 
         <nav aria-label={tx('Main navigation', 'التنقل الرئيسي')}>
-          {navItems.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={`sidebar-nav-btn ${activeNav === item ? 'selected' : ''}`}
-              onClick={() => handleNavChange(item)}
-            >
-              <div className="sidebar-nav-left">
-                {navIcons[item]}
-                <span>{isArabic ? navArabic[item] : item}</span>
+          {navSections.map((section) => (
+            <div key={section.key} className="sidebar-nav-section">
+              <div className="sidebar-section-header">
+                <span className="sidebar-section-dot" />
+                <span>{isArabic ? section.labelAr : section.labelEn}</span>
               </div>
-              {item === 'Workers' && workers.length > 0 && (
-                <span className="nav-counter">{workers.length}</span>
-              )}
-              {item === 'Inquiries' && (
-                <span className="nav-counter pulse-alert">4</span>
-              )}
-            </button>
+              <div className="sidebar-section-items">
+                {section.items.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`sidebar-nav-btn ${activeNav === item ? 'selected' : ''}`}
+                    onClick={() => handleNavChange(item)}
+                  >
+                    <div className="sidebar-nav-left">
+                      {navIcons[item]}
+                      <span>{isArabic ? navArabic[item] : item}</span>
+                    </div>
+                    <div className="sidebar-nav-right">
+                      {item === 'Workers' && workers.length > 0 && (
+                        <span className="nav-counter">{workers.length}</span>
+                      )}
+                      {item === 'Inquiries' && (
+                        <span className="nav-counter pulse-alert">4</span>
+                      )}
+                      {activeNav === item && (
+                        <span className="sidebar-active-indicator" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -870,9 +916,36 @@ export default function Page() {
             <span className="live-pulse" />
             <span>{tx('Musaned Live Sync · Active', 'ربط مساند المباشر · متصل')}</span>
           </div>
-          <div className="support-callout">
-            <span>{tx('Unified Support', 'الرقم الموحد')}</span>
-            <strong>920006629</strong>
+
+          <div className="sidebar-user-card">
+            <div className="sidebar-user-avatar">
+              {authContext?.user?.email?.slice(0, 2).toUpperCase() || 'FA'}
+            </div>
+            <div className="sidebar-user-info">
+              <strong className="sidebar-user-name">
+                {authContext?.user?.email?.split('@')[0] || tx('Operations Hub', 'إدارة العمليات')}
+              </strong>
+              <span className="sidebar-user-role">
+                <span className="sidebar-role-dot" />
+                <span>
+                  {role === 'super_admin'
+                    ? tx('SUPER ADMIN', 'المدير الأعلى')
+                    : role === 'admin'
+                    ? tx('ADMIN', 'المدير')
+                    : tx('SPONSOR', 'الكفيل')}
+                </span>
+              </span>
+            </div>
+            <button
+              type="button"
+              className="sidebar-user-logout"
+              onClick={handleLogout}
+              title={tx('Log out', 'تسجيل الخروج')}
+              aria-label={tx('Log out', 'تسجيل الخروج')}
+              disabled={loggingOut}
+            >
+              <LogOut className={`w-3.5 h-3.5 ${loggingOut ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
       </aside>
