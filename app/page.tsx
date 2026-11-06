@@ -23,17 +23,26 @@ const logoUrl = '/fan-alfaisal-logo.png'
 type Country = { country: string; employer: string; years: string }
 type Worker = {
   id: string; name: string; role: string; country: string; status: string; portrait: string;
-  passportPhoto: string; age: string; experience: string; gender: string; religion: string;
+  passportPhoto: string; age: string; experience: string; experienceCountry?: string; gender: string; religion: string;
   maritalStatus: string; children: string; availability: string; skills: string[];
   birthDate: string; passport: string; fee: number; weight?: string; height?: string
 }
 type WorkerRow = {
   id: string; full_name: string; job_title: string; nationality: string; birth_date: string | null;
   age: number | null; gender: string | null; religion: string | null; marital_status: string | null;
-  children: number | null; experience_years: number | null; availability: string | null;
+  children: number | null; experience_years: number | null; experience_country?: string | null; availability: string | null;
   skills: string[]; portrait_data: string | null; passport_data: string | null;
   passport_number: string | null; fee_sar: number | null
 }
+const experienceCountryOptions = [
+  { en: 'Saudi Arabia', ar: 'المملكة العربية السعودية' },
+  { en: 'Dubai (UAE)', ar: 'دبي (الإمارات)' },
+  { en: 'Kuwait', ar: 'الكويت' },
+  { en: 'Bahrain', ar: 'البحرين' },
+  { en: 'Qatar', ar: 'قطر' },
+  { en: 'Oman', ar: 'عُمان' },
+  { en: 'Other', ar: 'أخرى' }
+]
 type FeeRow = { country: string; fee_sar: number }
 
 type SponsorItem = {
@@ -376,6 +385,9 @@ export default function Page() {
   const [birthDate, setBirthDate] = useState('')
   const [calculatedAge, setCalculatedAge] = useState('')
   const [experience, setExperience] = useState('0')
+  const [hasExperience, setHasExperience] = useState(false)
+  const [experienceCountry, setExperienceCountry] = useState('')
+  const [experienceCountryOther, setExperienceCountryOther] = useState('')
 
   // Data fetching with resilient fallbacks
   const { data: feeRows = defaultFeeSettings, mutate: refreshFees } = useSWR<FeeRow[]>('country_fee_settings', async () => {
@@ -393,7 +405,7 @@ export default function Page() {
   const { data: workerRows = initialDemoWorkers, mutate: mutateWorkerRows, isLoading: workersLoading } = useSWR<WorkerRow[]>('worker_profiles', async () => {
     try {
       const { data, error } = await neonClient.from('worker_profiles').select(
-        'id,full_name,job_title,nationality,birth_date,age,gender,religion,marital_status,children,experience_years,availability,skills,portrait_data,passport_data,passport_number,fee_sar'
+        'id,full_name,job_title,nationality,birth_date,age,gender,religion,marital_status,children,experience_years,experience_country,availability,skills,portrait_data,passport_data,passport_number,fee_sar'
       ).order('created_at', { ascending: false })
       if (error || !data || data.length === 0) return initialDemoWorkers
       return data
@@ -416,6 +428,7 @@ export default function Page() {
     passportPhoto: row.passport_data || '',
     age: row.age == null ? '' : String(row.age),
     experience: row.experience_years == null ? '0' : String(row.experience_years),
+    experienceCountry: row.experience_country || '',
     gender: row.gender || '',
     religion: row.religion || '',
     maritalStatus: row.marital_status || '',
@@ -447,6 +460,9 @@ export default function Page() {
     setProfileNationality('')
     setProfileExperience('0')
     setExperience('0')
+    setHasExperience(false)
+    setExperienceCountry('')
+    setExperienceCountryOther('')
     setProfileGender(isArabic ? 'أنثى' : 'Female')
     setProfileChildren('0')
     setProfileAge('')
@@ -476,7 +492,23 @@ export default function Page() {
     setProfileAge(worker.age)
     setCalculatedAge(worker.age)
     setProfileExperience(worker.experience)
-    setExperience(worker.experience)
+    setExperience(worker.experience || '0')
+    const expNum = Number(worker.experience) || 0
+    const hasExp = expNum > 0 || Boolean(worker.experienceCountry)
+    setHasExperience(hasExp)
+    if (worker.experienceCountry) {
+      const knownCountries = ['Saudi Arabia', 'Dubai (UAE)', 'Kuwait', 'Bahrain', 'Qatar', 'Oman']
+      if (knownCountries.includes(worker.experienceCountry)) {
+        setExperienceCountry(worker.experienceCountry)
+        setExperienceCountryOther('')
+      } else {
+        setExperienceCountry('Other')
+        setExperienceCountryOther(worker.experienceCountry)
+      }
+    } else {
+      setExperienceCountry(hasExp ? 'Saudi Arabia' : '')
+      setExperienceCountryOther('')
+    }
     setProfileGender(worker.gender)
     setProfileReligion(worker.religion)
     setProfileMaritalStatus(worker.maritalStatus)
@@ -500,20 +532,30 @@ export default function Page() {
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') || profileName)
     const jobTitle = String(data.get('jobTitle') || profileJob)
-    const nationality = String(data.get('nationality') || profileNationality)
-    const experienceYears = Number(data.get('experience')) || Number(experience) || 0
+    const nationality = String(data.get('nationality') || profileNationality).trim()
+
+    if (!nationality) {
+      showToast(tx('Please select candidate nationality *', 'يرجى اختيار جنسية المرشح *'))
+      return
+    }
+
+    const expYears = hasExperience ? (Number(data.get('experience')) || Number(experience) || 0) : 0
+    const rawExpCountry = hasExperience
+      ? (experienceCountry === 'Other' ? (experienceCountryOther || 'Other') : (experienceCountry || String(data.get('experienceCountry') || '')))
+      : null
+
     const gender = String(data.get('gender') || profileGender)
-    const childrenCount = Number(data.get('children')) || Number(profileChildren) || 0
+    const marital = String(data.get('maritalStatus') || maritalStatus)
+    const childrenCount = marital === 'Single' ? 0 : (Number(data.get('children')) || Number(profileChildren) || 0)
     const ageVal = Number(data.get('age')) || (calculatedAge ? Number(calculatedAge) : 25)
     const religion = String(data.get('religion') || profileReligion)
-    const marital = String(data.get('maritalStatus') || maritalStatus)
     const availability = String(data.get('availability') || profileAvailability || 'Available')
     const passportNumber = String(data.get('passportNumber') || '')
 
     setProfileName(name)
     setProfileJob(jobTitle)
     setProfileNationality(nationality)
-    setProfileExperience(String(experienceYears))
+    setProfileExperience(String(expYears))
     setProfileGender(gender)
     setProfileChildren(String(childrenCount))
     setProfileAge(ageVal ? String(ageVal) : '')
@@ -535,7 +577,8 @@ export default function Page() {
       religion,
       marital_status: marital,
       children: childrenCount,
-      experience_years: experienceYears,
+      experience_years: expYears,
+      experience_country: rawExpCountry,
       availability,
       skills,
       portrait_data: portrait || null,
@@ -561,7 +604,8 @@ export default function Page() {
                 ...workerData,
                 age: ageVal,
                 children: childrenCount,
-                experience_years: experienceYears,
+                experience_years: expYears,
+                experience_country: rawExpCountry,
               }
             : row
         ),
@@ -592,7 +636,8 @@ export default function Page() {
           ...workerData,
           age: ageVal,
           children: childrenCount,
-          experience_years: experienceYears,
+          experience_years: expYears,
+          experience_country: rawExpCountry,
         },
         ...prev
       ], false)
@@ -629,6 +674,8 @@ export default function Page() {
     setProfileNationality(worker.country)
     setProfileAge(worker.age)
     setProfileExperience(worker.experience)
+    setExperienceCountry(worker.experienceCountry || '')
+    setHasExperience(Number(worker.experience) > 0 || Boolean(worker.experienceCountry))
     setProfileGender(worker.gender)
     setProfileReligion(worker.religion)
     setProfileMaritalStatus(worker.maritalStatus)
@@ -1179,30 +1226,21 @@ export default function Page() {
                           required
                           name="nationality"
                           options={nationalityOptions.map((o) => isArabic ? o.ar : o.en)}
-                          defaultValue={profileNationality || (isArabic ? 'الفلبين' : 'The Philippines')}
-                          placeholder={tx('Choose nationality', 'اختر الجنسية')}
-                        />
-                      </Field>
-                      <Field label={tx('Number of Children', 'عدد الأطفال')}>
-                        <input
-                          name="children"
-                          type="number"
-                          min="0"
-                          defaultValue={profileChildren || '0'}
-                          disabled={maritalStatus === 'Single'}
-                          placeholder={maritalStatus === 'Single' ? tx('Available for married only', 'متاح للمتزوجين فقط') : '0'}
+                          value={profileNationality}
+                          onChange={(e) => setProfileNationality(e.target.value)}
+                          placeholder={tx('Select Nationality', 'اختر الجنسية')}
                         />
                       </Field>
                       <Field label={tx('Passport Number', 'رقم الجواز')}>
                         <div className="locked-input">
-                          <input name="passportNumber" placeholder="P1234567" defaultValue="" />
+                          <input name="passportNumber" placeholder="P1234567" defaultValue={profilePassportNumber} />
                           <LockKeyhole />
                         </div>
                       </Field>
                       <Field label={tx('Official Recruitment Fee', 'رسوم الاستقدام النظامية')}>
                         <div className="locked-input">
                           <input
-                            value={currentFee ? `${currentFee.toLocaleString()} SAR` : '14,500 SAR'}
+                            value={currentFee ? `${currentFee.toLocaleString()} SAR` : (profileNationality ? '14,500 SAR' : tx('Select nationality first', 'حدد الجنسية أولاً'))}
                             readOnly
                           />
                           <Coins style={{ color: 'var(--brand-teal)' }} />
@@ -1210,20 +1248,35 @@ export default function Page() {
                       </Field>
                     </div>
 
-                    <div className="choice-columns">
+                    <div className="choice-columns" style={{ marginTop: '16px' }}>
                       <ChoiceGroup
                         name="religion"
                         label={tx('Religion', 'الديانة')}
                         options={['Islam', 'Christianity', 'Hinduism', 'Buddhism', 'Other']}
                         defaultValue={profileReligion || 'Islam'}
                       />
-                      <ChoiceGroup
-                        name="maritalStatus"
-                        label={tx('Marital Status', 'الحالة الاجتماعية')}
-                        options={['Single', 'Married', 'Divorced', 'Widowed']}
-                        defaultValue={maritalStatus || 'Single'}
-                        onChange={setMaritalStatus}
-                      />
+                      <div className="marital-status-col" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <ChoiceGroup
+                          name="maritalStatus"
+                          label={tx('Marital Status', 'الحالة الاجتماعية')}
+                          options={['Single', 'Married', 'Divorced', 'Widowed']}
+                          defaultValue={maritalStatus || 'Single'}
+                          onChange={setMaritalStatus}
+                        />
+                        <div style={{ marginTop: '2px' }}>
+                          <Field label={tx('Number of Children', 'عدد الأطفال')}>
+                            <input
+                              name="children"
+                              type="number"
+                              min="0"
+                              value={maritalStatus === 'Single' ? '0' : profileChildren}
+                              onChange={(e) => setProfileChildren(e.target.value)}
+                              disabled={maritalStatus === 'Single'}
+                              placeholder={maritalStatus === 'Single' ? tx('Available for married only', 'متاح للمتزوجين فقط') : '0'}
+                            />
+                          </Field>
+                        </div>
+                      </div>
                     </div>
                   </section>
 
@@ -1241,25 +1294,6 @@ export default function Page() {
                       <Field label={tx('Monthly Salary (SAR)', 'الراتب الشهري (ريال)')}>
                         <input name="salary" type="number" min="0" defaultValue={profileSalary || '1500'} placeholder="1500" />
                       </Field>
-                      <Field label={tx('Years of Experience', 'سنوات الخبرة')}>
-                        <div className="quick-number">
-                          <input
-                            name="experience"
-                            type="number"
-                            min="0"
-                            value={experience}
-                            onChange={(e) => setExperience(e.target.value)}
-                            placeholder="0"
-                          />
-                          <button
-                            type="button"
-                            aria-label={tx('Add one year', 'إضافة سنة')}
-                            onClick={() => setExperience((v) => String(Number(v || 0) + 1))}
-                          >
-                            <Plus />
-                          </button>
-                        </div>
-                      </Field>
                       <Field label={tx('Status / Availability', 'حالة التوفر')}>
                         <Select
                           name="availability"
@@ -1268,6 +1302,110 @@ export default function Page() {
                         />
                       </Field>
                     </div>
+
+                    {/* Experience Toggle Buttons (Pill-style matching Religion and Marital Status) */}
+                    <div style={{ marginTop: '16px' }}>
+                      <fieldset className="choice-group">
+                        <legend>{tx('Experience Level', 'مستوى الخبرة')}</legend>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className={!hasExperience ? 'chosen' : ''}
+                            onClick={() => {
+                              setHasExperience(false)
+                              setExperience('0')
+                              setExperienceCountry('')
+                              setExperienceCountryOther('')
+                            }}
+                          >
+                            {tx('No Experience', 'بدون خبرة')}
+                          </button>
+                          <button
+                            type="button"
+                            className={hasExperience ? 'chosen' : ''}
+                            onClick={() => {
+                              setHasExperience(true)
+                              if (experience === '0' || !experience) setExperience('2')
+                              if (!experienceCountry) setExperienceCountry('Saudi Arabia')
+                            }}
+                          >
+                            {tx('Has Experience', 'لديه خبرة')}
+                          </button>
+                        </div>
+                      </fieldset>
+                    </div>
+
+                    {/* Conditional Experience Details: Revealed when "Has Experience" is selected */}
+                    {hasExperience ? (
+                      <div
+                        className="experience-conditional-card"
+                        style={{
+                          marginTop: '14px',
+                          padding: '16px',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(180deg, #f8fbfd 0%, #f0f6fa 100%)',
+                          border: '1px solid #d5e2eb',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '14px'
+                        }}
+                      >
+                        <div style={{ maxWidth: '240px' }}>
+                          <Field label={tx('Years of Experience', 'سنوات الخبرة')}>
+                            <div className="quick-number">
+                              <input
+                                name="experience"
+                                type="number"
+                                min="1"
+                                max="35"
+                                value={experience}
+                                onChange={(e) => setExperience(e.target.value)}
+                                placeholder="2"
+                              />
+                              <button
+                                type="button"
+                                aria-label={tx('Add one year', 'إضافة سنة')}
+                                onClick={() => setExperience((v) => String(Number(v || 0) + 1))}
+                              >
+                                <Plus />
+                              </button>
+                            </div>
+                          </Field>
+                        </div>
+
+                        <fieldset className="choice-group">
+                          <legend>{tx('Country of Experience', 'بلد الخبرة')}</legend>
+                          <input type="hidden" name="experienceCountry" value={experienceCountry === 'Other' ? (experienceCountryOther || 'Other') : experienceCountry} />
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {experienceCountryOptions.map((country) => (
+                              <button
+                                key={country.en}
+                                type="button"
+                                className={experienceCountry === country.en ? 'chosen' : ''}
+                                onClick={() => setExperienceCountry(country.en)}
+                              >
+                                {isArabic ? country.ar : country.en}
+                              </button>
+                            ))}
+                          </div>
+                        </fieldset>
+
+                        {experienceCountry === 'Other' && (
+                          <div style={{ maxWidth: '320px' }}>
+                            <Field label={tx('Specify Country', 'حدد الدولة')}>
+                              <input
+                                name="experienceCountryOther"
+                                value={experienceCountryOther}
+                                onChange={(e) => setExperienceCountryOther(e.target.value)}
+                                placeholder={tx('Enter country name...', 'أدخل اسم الدولة...')}
+                              />
+                            </Field>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <input type="hidden" name="experience" value="0" />
+                    )}
                   </section>
 
                   <section className="form-section">
@@ -1338,6 +1476,7 @@ export default function Page() {
           nationality={profileNationality}
           age={profileAge}
           experience={profileExperience}
+          experienceCountry={hasExperience ? (experienceCountry === 'Other' ? (experienceCountryOther || 'Other') : experienceCountry) : ''}
           religion={profileReligion}
           maritalStatus={profileMaritalStatus}
           children={profileChildren}
@@ -1787,6 +1926,7 @@ const SponsorPortal = memo(function SponsorPortal({
           nationality={profileNationality}
           age={profileAge}
           experience={profileExperience}
+          experienceCountry={hasExperience ? (experienceCountry === 'Other' ? (experienceCountryOther || 'Other') : experienceCountry) : ''}
           religion={profileReligion}
           maritalStatus={profileMaritalStatus}
           children={profileChildren}
@@ -3481,10 +3621,30 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Select({ name, options, defaultValue, required, placeholder }: { name?: string; options: string[]; defaultValue: string; required?: boolean; placeholder?: string }) {
+function Select({
+  name,
+  options,
+  defaultValue,
+  value,
+  onChange,
+  required,
+  placeholder
+}: {
+  name?: string
+  options: string[]
+  defaultValue?: string
+  value?: string
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  required?: boolean
+  placeholder?: string
+}) {
   return (
     <div className="select-wrap">
-      <select required={required} name={name} defaultValue={defaultValue}>
+      <select
+        required={required}
+        name={name}
+        {...(value !== undefined ? { value, onChange } : { defaultValue: defaultValue ?? '', onChange })}
+      >
         <option value="" disabled>{placeholder || 'Choose an option'}</option>
         {options.map((option) => (
           <option key={option} value={option}>{option}</option>

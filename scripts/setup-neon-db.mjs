@@ -21,6 +21,7 @@ async function setupDatabase() {
       marital_status TEXT,
       children INTEGER DEFAULT 0,
       experience_years INTEGER DEFAULT 0,
+      experience_country TEXT,
       availability TEXT DEFAULT 'Available',
       skills TEXT[] DEFAULT '{}',
       portrait_data TEXT,

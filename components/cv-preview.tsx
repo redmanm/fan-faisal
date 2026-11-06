@@ -10,6 +10,7 @@ type Props = {
   nationality: string
   age: string
   experience: string
+  experienceCountry?: string
   religion: string
   maritalStatus: string
   children: string
@@ -133,6 +134,7 @@ export function CVPreview({
   nationality,
   age,
   experience,
+  experienceCountry,
   religion,
   maritalStatus,
   children,
@@ -181,9 +183,9 @@ export function CVPreview({
     ? (isArabic ? (availability === 'Available' ? 'متاح' : 'محجوز') : availability)
     : (isArabic ? 'متاح' : 'Available')
 
-  const displayExperience = experience
-    ? `${experience} ${t('Years', 'سنوات')}`
-    : `0 ${t('Years', 'سنوات')}`
+  const displayExperience = experience && experience !== '0'
+    ? (experienceCountry ? `${experience} ${t('Years', 'سنوات')} (${experienceCountry})` : `${experience} ${t('Years', 'سنوات')}`)
+    : t('No Experience', 'بدون خبرة')
 
   const displayAge = age ? `${age} ${t('Years', 'سنوات')}` : ''
 
