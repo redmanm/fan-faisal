@@ -5,8 +5,9 @@ import {
   useEffect, useRef, useState, useMemo, useCallback, useTransition, useDeferredValue, memo
 } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
-  Check, ChevronDown, Eye, ImagePlus, LockKeyhole, LogOut, Menu, Pencil, Plus, RotateCcw,
+  Check, ChevronDown, Eye, ImagePlus, LockKeyhole, LogIn, LogOut, Menu, Pencil, Plus, RotateCcw,
   Search, SlidersHorizontal, Trash2, Upload, UserRound, LayoutDashboard, Users, Building2,
   MessageSquare, Settings, ShieldCheck, TrendingUp, UserCheck, Globe, Clock, Sparkles,
   ArrowUpRight, Download, FileText, CheckCircle2, AlertCircle, Calendar, ChevronRight,
@@ -25,7 +26,7 @@ type Worker = {
   id: string; name: string; role: string; country: string; status: string; portrait: string;
   passportPhoto: string; age: string; experience: string; experienceCountry?: string; gender: string; religion: string;
   maritalStatus: string; children: string; availability: string; skills: string[];
-  birthDate: string; passport: string; fee: number; weight?: string; height?: string
+  birthDate: string; passport: string; fee: number; weight?: string; height?: string; salary?: string
 }
 type WorkerRow = {
   id: string; full_name: string; job_title: string; nationality: string; birth_date: string | null;
@@ -698,26 +699,28 @@ export default function Page() {
   }
 
   const handleOpenWorker = useCallback((worker: Worker) => {
-    setProfileName(worker.name)
-    setProfileJob(worker.role)
-    setProfileNationality(worker.country)
-    setProfileAge(worker.age)
-    setProfileExperience(worker.experience)
+    if (!worker) return
+    setProfileName(worker.name || '')
+    setProfileJob(worker.role || '')
+    setProfileNationality(worker.country || '')
+    setProfileAge(worker.age ? String(worker.age) : '')
+    setProfileExperience(worker.experience ? String(worker.experience) : '0')
     setExperienceCountry(worker.experienceCountry || '')
     setHasExperience(Number(worker.experience) > 0 || Boolean(worker.experienceCountry))
-    setProfileGender(worker.gender)
-    setProfileReligion(worker.religion)
-    setProfileMaritalStatus(worker.maritalStatus)
-    setProfileChildren(worker.children)
-    setProfileAvailability(worker.availability)
-    setProfileSkills(worker.skills)
-    setBirthDate(worker.birthDate)
-    setCalculatedAge(worker.age)
-    setPortrait(worker.portrait)
-    setPassport(worker.passportPhoto)
+    setProfileGender(worker.gender || 'Female')
+    setProfileReligion(worker.religion || '')
+    setProfileMaritalStatus(worker.maritalStatus || 'Single')
+    setProfileChildren(worker.children ? String(worker.children) : '0')
+    setProfileAvailability(worker.availability || 'Available')
+    setProfileSkills(Array.isArray(worker.skills) ? worker.skills : [])
+    setBirthDate(worker.birthDate || '')
+    setCalculatedAge(worker.age ? String(worker.age) : '')
+    setPortrait(worker.passportPhoto || worker.portrait || '')
+    setPassport(worker.passportPhoto || '')
     setProfilePassportNumber(worker.passport || '')
     setProfileWeight(worker.weight || '55')
     setProfileHeight(worker.height || '160')
+    setProfileSalary(worker.salary || '1500')
     setPublished(true)
   }, [])
 
@@ -822,14 +825,15 @@ export default function Page() {
     'User access': <ShieldCheck />
   }
 
-  // Sponsor Account: Dedicated view matching user's exact uploaded design (NO dashboard, NO sidebar)
+  // Public Directory & Sponsor Portal: Dedicated view matching user's exact uploaded design (NO dashboard, NO sidebar)
   if (role === 'sponsor') {
     return (
       <SponsorPortal
         workers={workers}
         loading={workersLoading}
         language={language}
-        userEmail={authContext?.user?.email || 'sponsor@fanfaisal.sa'}
+        userEmail={authContext?.user?.email || ''}
+        isAuthenticated={Boolean(authContext?.user)}
         onLanguageChange={changeLanguage}
         onOpenWorker={handleOpenWorker}
         onLogout={handleLogout}
@@ -840,6 +844,7 @@ export default function Page() {
         profileNationality={profileNationality}
         profileAge={profileAge}
         profileExperience={profileExperience}
+        profileExperienceCountry={experienceCountry}
         profileReligion={profileReligion}
         profileMaritalStatus={profileMaritalStatus}
         profileChildren={profileChildren}
@@ -1574,8 +1579,8 @@ export default function Page() {
 /* ========================================================================= */
 
 const SponsorPortal = memo(function SponsorPortal({
-  workers, loading, language, userEmail, onLanguageChange, onOpenWorker, onLogout, loggingOut,
-  published, profileName, profileJob, profileNationality, profileAge, profileExperience,
+  workers, loading, language, userEmail, isAuthenticated, onLanguageChange, onOpenWorker, onLogout, loggingOut,
+  published, profileName, profileJob, profileNationality, profileAge, profileExperience, profileExperienceCountry,
   profileReligion, profileMaritalStatus, profileChildren, profileSalary, currentFee,
   profileWeight, profileHeight, profileSkills, portrait, profileGender, profileAvailability, profilePassportNumber, onCloseCV
 }: {
@@ -1583,6 +1588,7 @@ const SponsorPortal = memo(function SponsorPortal({
   loading?: boolean
   language: 'en' | 'ar'
   userEmail: string
+  isAuthenticated: boolean
   onLanguageChange: (lang: 'en' | 'ar') => void
   onOpenWorker: (w: Worker) => void
   onLogout?: () => void
@@ -1593,6 +1599,7 @@ const SponsorPortal = memo(function SponsorPortal({
   profileNationality: string
   profileAge: string
   profileExperience: string
+  profileExperienceCountry?: string
   profileReligion: string
   profileMaritalStatus: string
   profileChildren: string
@@ -1616,6 +1623,7 @@ const SponsorPortal = memo(function SponsorPortal({
   const [experience, setExperience] = useState('All')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [orderedCandidate, setOrderedCandidate] = useState<Worker | null>(null)
+  const [authRequiredCandidate, setAuthRequiredCandidate] = useState<Worker | null>(null)
 
   const resetFilters = useCallback(() => {
     setNationality('All')
@@ -1668,8 +1676,13 @@ const SponsorPortal = memo(function SponsorPortal({
     })
   }, [availableWorkers, nationality, ageRange, religion, experience])
 
-  // INSTANT OPTIMISTIC ORDER: Opens dialog immediately (0ms delay), submits request in background
+  // ORDER FLOW: If unauthenticated guest, prompt to sign in; if authenticated sponsor, place order
   const handleOrder = useCallback((worker: Worker) => {
+    if (!isAuthenticated) {
+      setAuthRequiredCandidate(worker)
+      return
+    }
+
     setOrderedCandidate(worker)
     ;(async () => {
       try {
@@ -1683,11 +1696,11 @@ const SponsorPortal = memo(function SponsorPortal({
         console.warn('Background worker request error:', err)
       }
     })()
-  }, [userEmail])
+  }, [isAuthenticated, userEmail])
 
   return (
     <div className={`sponsor-portal-shell ${isArabic ? 'rtl-mode' : ''}`} dir={isArabic ? 'rtl' : 'ltr'} lang={language}>
-      {/* Clean top bar for sponsor */}
+      {/* Clean top bar for sponsor / public browsing */}
       <header className="sponsor-top-header">
         <div className="sponsor-brand">
           <img src={logoUrl} alt="Fan AlFaisal Recruitment Company" />
@@ -1708,25 +1721,46 @@ const SponsorPortal = memo(function SponsorPortal({
             <span>{isArabic ? 'English' : 'العربية'}</span>
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#f1f5f8', borderRadius: 999 }}>
-            <span className="profile-trigger-avatar" style={{ width: 26, height: 26, fontSize: 10 }}>
-              {userEmail.slice(0, 2).toUpperCase() || 'SP'}
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-navy)' }}>
-              {userEmail.split('@')[0] || t('Sponsor Account', 'حساب الكفيل')}
-            </span>
-          </div>
+          {isAuthenticated ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: '#f1f5f8', borderRadius: 999 }}>
+                <span className="profile-trigger-avatar" style={{ width: 26, height: 26, fontSize: 10 }}>
+                  {userEmail.slice(0, 2).toUpperCase() || 'SP'}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-navy)' }}>
+                  {userEmail.split('@')[0] || t('Sponsor Account', 'حساب الكفيل')}
+                </span>
+              </div>
 
-          <button
-            type="button"
-            className="logout-button"
-            style={{ width: 'auto', padding: '7px 12px', margin: 0 }}
-            disabled={loggingOut}
-            onClick={onLogout}
-          >
-            <LogOut className={loggingOut ? 'animate-spin' : ''} />
-            {loggingOut ? t('Logging out…', 'جارٍ الخروج…') : t('Log out', 'تسجيل الخروج')}
-          </button>
+              <button
+                type="button"
+                className="logout-button"
+                style={{ width: 'auto', padding: '7px 12px', margin: 0 }}
+                disabled={loggingOut}
+                onClick={onLogout}
+              >
+                <LogOut className={loggingOut ? 'animate-spin' : ''} />
+                {loggingOut ? t('Logging out…', 'جارٍ الخروج…') : t('Log out', 'تسجيل الخروج')}
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="approve-button"
+              style={{
+                textDecoration: 'none',
+                padding: '7px 16px',
+                fontSize: 12,
+                borderRadius: 8,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6
+              }}
+            >
+              <LogIn style={{ width: 14, height: 14 }} />
+              <span>{t('Sign in', 'تسجيل الدخول')}</span>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -1990,7 +2024,82 @@ const SponsorPortal = memo(function SponsorPortal({
         </div>
       )}
 
-      {/* CV Modal for Sponsor */}
+      {/* Auth Required Dialog for Unauthenticated Guests Clicking "Order now" */}
+      {authRequiredCandidate && (
+        <div className="worker-modal" role="dialog" aria-modal="true">
+          <div className="order-success-dialog" style={{ maxWidth: 440, textAlign: 'center' }}>
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                background: '#e8f7f3',
+                color: '#008064',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}
+            >
+              <LockKeyhole style={{ width: 26, height: 26 }} />
+            </div>
+
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: 'var(--brand-navy)', marginBottom: 8 }}>
+              {t('Sign in to submit your recruitment request', 'يرجى تسجيل الدخول لتقديم طلب الاستقدام')}
+            </h2>
+
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 18 }}>
+              {t(
+                `To order candidate "${authRequiredCandidate.name}" and finalize the official contract, please sign in to your sponsor account.`,
+                `لإتمام طلب استقدام المرشحة "${authRequiredCandidate.name}" وتوثيق العقد عبر مساند، يرجى تسجيل الدخول أولاً.`
+              )}
+            </p>
+
+            <div className="order-details-box" style={{ marginBottom: 20 }}>
+              <div className="order-detail-line">
+                <span>{t('Candidate', 'المرشح')}</span>
+                <strong>{authRequiredCandidate.name}</strong>
+              </div>
+              <div className="order-detail-line">
+                <span>{t('Profession', 'المهنة')}</span>
+                <strong>{authRequiredCandidate.role}</strong>
+              </div>
+              <div className="order-detail-line">
+                <span>{t('Nationality', 'الجنسية')}</span>
+                <strong>{isArabic ? (nationalityMap[authRequiredCandidate.country]?.ar || authRequiredCandidate.country) : authRequiredCandidate.country}</strong>
+              </div>
+              <div className="order-detail-line">
+                <span>{t('Official Fee', 'الرسوم النظامية')}</span>
+                <strong style={{ color: 'var(--brand-teal)' }}>{authRequiredCandidate.fee ? `${authRequiredCandidate.fee.toLocaleString()} SAR` : '14,500 SAR'}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+              <button
+                type="button"
+                className="modal-secondary-button"
+                style={{ flex: 1, justifyContent: 'center' }}
+                onClick={() => setAuthRequiredCandidate(null)}
+              >
+                {t('Cancel', 'إلغاء')}
+              </button>
+              <button
+                type="button"
+                className="approve-button"
+                style={{ flex: 2, justifyContent: 'center' }}
+                onClick={() => {
+                  window.location.href = `/auth/login?redirect=/&workerId=${authRequiredCandidate.id}`
+                }}
+              >
+                <LogIn style={{ width: 15, height: 15 }} />
+                <span>{t('Sign In / Register', 'تسجيل الدخول / إنشاء حساب')}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CV Modal for Sponsor & Public Visitors */}
       {published && (
         <CVPreview
           language={language}
@@ -1999,7 +2108,7 @@ const SponsorPortal = memo(function SponsorPortal({
           nationality={profileNationality}
           age={profileAge}
           experience={profileExperience}
-          experienceCountry={hasExperience ? (experienceCountry === 'Other' ? (experienceCountryOther || 'Other') : experienceCountry) : ''}
+          experienceCountry={profileExperienceCountry || ''}
           religion={profileReligion}
           maritalStatus={profileMaritalStatus}
           children={profileChildren}

@@ -60,8 +60,10 @@ export default function LoginPage() {
         return
       }
 
-      // Instant client-side redirect using pre-warmed route
-      router.replace('/')
+      // Instant client-side redirect using pre-warmed route or query redirect
+      const redirectParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null
+      const redirectUrl = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/'
+      router.replace(redirectUrl)
     } catch {
       setError(t('An unexpected error occurred. Please try again.', 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.'))
       setLoading(false)
@@ -204,15 +206,28 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Language Switcher */}
-            <button
-              type="button"
-              className="login-lang-toggle"
-              onClick={() => setLanguage(isArabic ? 'en' : 'ar')}
-            >
-              <Globe style={{ width: 14, height: 14 }} />
-              <span>{isArabic ? 'English' : 'العربية'}</span>
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Back to public candidate directory */}
+              <a
+                href="/"
+                className="login-lang-toggle"
+                style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                title={t('Browse candidates', 'تصفح العمالة المتاحة')}
+              >
+                <ArrowLeft style={{ width: 14, height: 14 }} className={isArabic ? 'rotate-180' : ''} />
+                <span>{t('Public Candidates', 'المرشحون')}</span>
+              </a>
+
+              {/* Language Switcher */}
+              <button
+                type="button"
+                className="login-lang-toggle"
+                onClick={() => setLanguage(isArabic ? 'en' : 'ar')}
+              >
+                <Globe style={{ width: 14, height: 14 }} />
+                <span>{isArabic ? 'English' : 'العربية'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Form Header */}

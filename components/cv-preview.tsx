@@ -197,6 +197,10 @@ export function CVPreview({
     if (!cvRef.current || downloading) return
     setDownloading(true)
     try {
+      if (typeof document !== 'undefined' && document.fonts) {
+        await document.fonts.ready
+      }
+
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf')
@@ -205,11 +209,13 @@ export function CVPreview({
       const canvas = await html2canvas(cvRef.current, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: '#f7f8f5',
         windowWidth: 794,
         windowHeight: 1123,
         scrollX: 0,
-        scrollY: 0
+        scrollY: 0,
+        logging: false
       })
 
       const pdf = new jsPDF({
@@ -303,7 +309,7 @@ export function CVPreview({
               />
             </div>
             <div className="cv-header-company-info">
-              <div className="cv-company-arabic">شركة فن الفيصل للإستقدام</div>
+              <div className="cv-company-arabic" dir="rtl" lang="ar">شركة فن الفيصل للإستقدام</div>
               <div className="cv-company-english">Fan AlFaisal Recruitment Company</div>
               <div className="cv-header-rule-wrapper">
                 <span className="cv-rule-bar" />
@@ -434,12 +440,18 @@ export function CVPreview({
 
           {/* Full-Width Navy & Teal Footer */}
           <footer className="cv-exact-footer">
-            <div className="cv-footer-company-text">
+            <div className="cv-footer-company-text" dir={isArabic ? 'rtl' : 'ltr'}>
               {t('Fan AlFaisal Recruitment Company', 'شركة فن الفيصل للإستقدام')}
             </div>
-            <div className="cv-footer-unified-row">
+            <div className="cv-footer-unified-row" dir={isArabic ? 'rtl' : 'ltr'}>
               <Phone className="cv-footer-phone-icon" />
-              <span>{t('Unified Number 920006629', 'الرقم الموحد 920006629')}</span>
+              <span>
+                {isArabic ? (
+                  <>الرقم الموحد <bdi dir="ltr">920006629</bdi></>
+                ) : (
+                  'Unified Number 920006629'
+                )}
+              </span>
             </div>
           </footer>
         </div>

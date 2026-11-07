@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
@@ -3462,11 +3462,17 @@ button,
 }
 
 .cv-company-arabic {
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
   font-size: 27px;
   font-weight: 800;
   color: #0c345c;
   line-height: 1.25;
-  letter-spacing: -0.3px;
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  direction: rtl;
+  unicode-bidi: isolate;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "calt" 1;
 }
 
 .cv-company-english {
@@ -3724,23 +3730,51 @@ button,
   fill: currentColor;
 }
 
-/* RTL Support */
+/* RTL Support & Arabic Font Shaping */
 .cv-rtl {
   direction: rtl;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
+}
+
+.cv-rtl,
+.cv-rtl *,
+.cv-company-arabic,
+.worker-cv [dir="rtl"],
+.worker-cv [lang="ar"] {
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+  font-feature-settings: "liga" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
 }
 
 .cv-rtl .cv-data-label {
   border-right: none;
   border-left: 1.5px solid #092e59;
   text-align: right;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
 }
 
 .cv-rtl .cv-data-value {
   text-align: right;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
 }
 
 .cv-rtl .cv-section-navy-header {
   text-align: right;
+  letter-spacing: normal !important;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
+}
+
+.cv-rtl .cv-footer-company-text {
+  letter-spacing: normal !important;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
+}
+
+.cv-rtl .cv-job-title,
+.cv-rtl .cv-candidate-name,
+.cv-rtl .cv-skill-label {
+  letter-spacing: normal !important;
+  font-family: 'Cairo', 'Amiri', 'Segoe UI', Tahoma, sans-serif;
 }
 
 .cv-rtl .cv-custom-header,
