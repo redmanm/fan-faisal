@@ -20,6 +20,7 @@ type Props = {
   height: string
   skills: string[]
   portrait: string
+  passportPhoto?: string
   gender?: string
   availability?: string
   passportNumber?: string
@@ -144,6 +145,7 @@ export function CVPreview({
   height,
   skills = ['Cooking', 'Childcare'],
   portrait,
+  passportPhoto,
   gender,
   availability,
   passportNumber,
@@ -331,12 +333,12 @@ export function CVPreview({
 
           {/* Main Body Columns: Left = Full-Height Portrait, Right = Details & Skills */}
           <div className="cv-columns-grid">
-            {/* Left Column: Portrait */}
+            {/* Left Column: Full-Body Standing Portrait */}
             <div className="cv-portrait-column">
               <div className="cv-portrait-box">
-                {portrait ? (
+                {(portrait || passportPhoto || passport) ? (
                   <img
-                    src={portrait}
+                    src={portrait || passportPhoto || passport}
                     alt={t(`${name} portrait`, `الصورة الشخصية لـ ${name}`)}
                     className="cv-portrait-img"
                   />
@@ -352,7 +354,7 @@ export function CVPreview({
                       }}
                     />
                     <span className="cv-placeholder-text">
-                      {t('Biometric Photo', 'الصورة الشخصية')}
+                      {t('Full-size Photo', 'الصورة الكاملة')}
                     </span>
                   </div>
                 )}
